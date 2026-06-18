@@ -5,78 +5,47 @@ import 'package:guitar_shared_tabs/song.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class TablatureSection extends StatefulWidget {
-  const TablatureSection({super.key});
+  // 1. 🛠️ On demande la liste de chansons
+  final List<Song> songs;
+  
+  const TablatureSection({super.key, required this.songs});
 
   @override
   State<TablatureSection> createState() => _TablatureSectionState();
 }
-
 class _TablatureSectionState extends State<TablatureSection> {
-  // Liste des morceaux
-  final List<Song> _songs = [
-    Song(
-      title: "Everywhere, Everything",
-      artist: "Noah Kahan, Gracie Abrams",
-      composer: "Noah Kahan",
-      addedBy: "Yoann",
-      imageUrl: "https://i.scdn.co/image/ab67616d0000b273f1e3c5e4a1f2c3e4a5b6c7d8",
-      bpm: 1000,
-      rhythm: "B B H H B H", // Mis à jour avec des espaces pour plus de clarté
-      lyrics: [
-        "[C]Would we survive in a horror movie",
-        "I doubt it, we're too [G]slow mov[C]ing",
-      ],
-    ),
-    Song(
-      title: "TEST: Balises & Longueur",
-      artist: "Robot de Test",
-      composer: "Yoann Lab",
-      addedBy: "Debug Mode",
-      imageUrl: "https://i.scdn.co/image/ab67616d0000b273f1e3c5e4a1f2c3e4a5b6c7d8",
-      bpm: 120,
-      rhythm: "B B B B", 
-      lyrics: [
-        "Would we survive in a horror movie Would we survive in a horror movie Would we survive in a horror movie Would we survive in a horror movie Would we survive in a horror movie Would we survive in a [C]horror movie ",
-        "I doubt it, [G]we're too [C]slow moving",
-        "[C] [G] [Em]", 
-      ],
-    ),
-  ];
+  // SUPPRIME l'ancienne liste _songs qui était ici.
+  // Tu l'utiliseras désormais en tapant `widget.songs`
 
-  @override
+@override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
+    // Fini le LayoutBuilder et les calculs de ratio compliqués !
+    // On utilise une simple ListView.separated pour afficher 1 élément par ligne
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: widget.songs.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16), // Espace vertical entre les cartes
+      itemBuilder: (context, index) {
+        final song = widget.songs[index];
 
-        final double desiredHeight = isMobile ? 80.0 : 140.0; 
-        final double columnWidth = (constraints.maxWidth - 16 - 12) / 2;
-        final double dynamicAspectRatio = columnWidth / desiredHeight;
-
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: _songs.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, 
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: dynamicAspectRatio, 
-          ),
-          itemBuilder: (context, index) {
-            final song = _songs[index];
-
-            return GestureDetector(
+        return Center(
+          child: ConstrainedBox(
+            // 🛠️ Bloque la largeur sur PC pour ne pas avoir une carte géante étirée sur 2 mètres de large
+            constraints: const BoxConstraints(maxWidth: 800), 
+            child: GestureDetector(
               onTap: () => _openSongDetails(song),
               child: Container(
+                // Petit padding interne pour laisser la carte respirer
+                padding: const EdgeInsets.all(4.0), 
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3)],
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                 ),
                 child: _buildCardView(song),
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -139,15 +108,22 @@ class _TablatureSectionState extends State<TablatureSection> {
                 ),
                 const SizedBox(height: 4),
                 
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8, // Espace horizontal
+                  runSpacing: 4, // Espace vertical si ça passe à la ligne
                   children: [
                     _buildRhythmArrows(song.rhythm, isMobile: isMobile),
-                    const SizedBox(width: 12), 
-                    Icon(Icons.timer_outlined, size: isMobile ? 12 : 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      "${song.bpm} BPM",
-                      style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 10 : 12, fontWeight: FontWeight.w600),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.timer_outlined, size: isMobile ? 12 : 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${song.bpm} BPM",
+                          style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 10 : 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -424,5 +400,8 @@ Widget _buildRhythmArrows(String rhythm, {bool isMobile = false}) {
       arrows.add(const SizedBox(width: 4)); 
     }
   }
-  return Row(mainAxisSize: MainAxisSize.min, children: arrows);
+  return Wrap(
+    crossAxisAlignment: WrapCrossAlignment.center, 
+    children: arrows
+  );
 }

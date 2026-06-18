@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:guitar_shared_tabs/song.dart';
 
 class CompositionSection extends StatefulWidget {
-  const CompositionSection({super.key});
+  final Function(Song) onSongAdded;
+  
+  const CompositionSection({super.key, required this.onSongAdded});
 
   @override
   State<CompositionSection> createState() => _CompositionSectionState();
@@ -10,30 +13,33 @@ class CompositionSection extends StatefulWidget {
 class _CompositionSectionState extends State<CompositionSection> {
   final _formKey = GlobalKey<FormState>();
   
-  // Contrôleurs de saisie
   final _titleController = TextEditingController();
+  final _artistController = TextEditingController(); 
   final _composerController = TextEditingController();
   final _addedByController = TextEditingController();
   final _bpmController = TextEditingController();
   final _rhythmController = TextEditingController();
   final _lyricsController = TextEditingController();
 
-  String? _selectedChord; // L'accord actuellement sélectionné pour être injecté
-  List<String> availableChords = ["C", "G", "Em", "D", "Am"];
+  String? _selectedChord; 
+  List<String> availableChords = ["C", "G", "Em", "D", "Am", "F", "Bm"];
 
-  // Fonction pour simuler l'injection d'un accord au curseur actuel
   void _insertChordInLyrics() {
     if (_selectedChord == null) return;
     
     final text = _lyricsController.text;
     final selection = _lyricsController.selection;
     
-    // On injecte une balise (ex: [C]) là où est le curseur pour la traiter plus tard
-    final newText = text.replaceRange(selection.start, selection.end, "[$_selectedChord]");
+    final int insertPosition = selection.isValid ? selection.start : text.length;
+    
+    final newText = text.replaceRange(
+      insertPosition, 
+      selection.isValid ? selection.end : text.length, 
+      "[$_selectedChord]"
+    );
     _lyricsController.text = newText;
     
-    // Repositionne le curseur après l'accord inséré
-    _lyricsController.selection = TextSelection.collapsed(offset: selection.start + _selectedChord!.length + 2);
+    _lyricsController.selection = TextSelection.collapsed(offset: insertPosition + _selectedChord!.length + 2);
   }
 
   @override
@@ -46,21 +52,62 @@ class _CompositionSectionState extends State<CompositionSection> {
           children: [
             const Text("Créer une nouvelle Tablature", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: "Titre de la chanson")),
-            TextFormField(controller: _composerController, decoration: const InputDecoration(labelText: "Nom du compositeur")),
-            TextFormField(controller: _addedByController, decoration: const InputDecoration(labelText: "Votre nom (Contributeur)")),
+            
+            // 🛠️ Titre (Obligatoire)
+            TextFormField(
+              controller: _titleController, 
+              decoration: const InputDecoration(labelText: "Titre de la chanson *"),
+              validator: (value) => value == null || value.isEmpty ? 'Veuillez entrer un titre' : null,
+            ),
+            
+            // 🛠️ Artiste (Obligatoire)
+            TextFormField(
+              controller: _artistController, 
+              decoration: const InputDecoration(labelText: "Artiste / Groupe original *"),
+              validator: (value) => value == null || value.isEmpty ? 'Veuillez renseigner l\'artiste' : null,
+            ),
+            
+            // 🛠️ Compositeur (Optionnel)
+            TextFormField(
+              controller: _composerController, 
+              decoration: const InputDecoration(labelText: "Nom du compositeur (optionnel)")
+            ),
+            
+            // 🛠️ Contributeur (Obligatoire)
+            TextFormField(
+              controller: _addedByController, 
+              decoration: const InputDecoration(labelText: "Votre nom (Contributeur) *"),
+              validator: (value) => value == null || value.isEmpty ? 'Veuillez renseigner votre nom' : null,
+            ),
+            
             Row(
               children: [
-                Expanded(child: TextFormField(controller: _bpmController, decoration: const InputDecoration(labelText: "BPM"), keyboardType: TextInputType.number)),
+                Expanded(
+                  child: TextFormField(
+                    controller: _bpmController, 
+                    decoration: const InputDecoration(labelText: "BPM (ex: 120)"), 
+                    keyboardType: TextInputType.number,
+                  )
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: TextFormField(controller: _rhythmController, decoration: const InputDecoration(labelText: "Rythme"))),
+                
+                // 🛠️ Rythme (Obligatoire)
+                Expanded(
+                  child: TextFormField(
+                    controller: _rhythmController, 
+                    decoration: const InputDecoration(labelText: "Rythme (ex: B B H H B H) *"),
+                    validator: (value) => value == null || value.isEmpty ? 'Veuillez indiquer le rythme' : null,
+                  )
+                ),
               ],
             ),
             const SizedBox(height: 24),
             
-            // Outil d'injection d'accords
             const Text("Éditeur de paroles avec accords", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Row(
+            Wrap(
+              spacing: 12, // Espace horizontal entre le dropdown et le bouton
+              runSpacing: 12, // Espace vertical s'ils finissent sur deux lignes différentes
+              crossAxisAlignment: WrapCrossAlignment.center, // Aligne verticalement au centre
               children: [
                 DropdownButton<String>(
                   value: _selectedChord,
@@ -68,7 +115,6 @@ class _CompositionSectionState extends State<CompositionSection> {
                   items: availableChords.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                   onChanged: (val) => setState(() => _selectedChord = val),
                 ),
-                const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: _insertChordInLyrics,
                   child: const Text("Placer l'accord au curseur"),
@@ -77,7 +123,6 @@ class _CompositionSectionState extends State<CompositionSection> {
             ),
             const SizedBox(height: 12),
             
-            // Zone de saisie des paroles
             TextFormField(
               controller: _lyricsController,
               maxLines: 10,
@@ -88,14 +133,40 @@ class _CompositionSectionState extends State<CompositionSection> {
               style: const TextStyle(fontFamily: 'monospace'),
             ),
             const SizedBox(height: 20),
+            
             ElevatedButton(
               onPressed: () {
-                // Logique de sauvegarde (ex: envoyer à Firebase ou une API)
                 if (_formKey.currentState!.validate()) {
-                  print("Chanson prête à être enregistrée !");
+                  final newSong = Song(
+                    title: _titleController.text,
+                    artist: _artistController.text,
+                    composer: _composerController.text,
+                    addedBy: _addedByController.text,
+                    imageUrl: "https://i.scdn.co/image/ab67616d0000b273f1e3c5e4a1f2c3e4a5b6c7d8", 
+                    bpm: int.tryParse(_bpmController.text) ?? 100, 
+                    rhythm: _rhythmController.text,
+                    lyrics: _lyricsController.text.split('\n'), 
+                  );
+                  
+                  widget.onSongAdded(newSong);
+                  
+                  _titleController.clear();
+                  _artistController.clear();
+                  _composerController.clear();
+                  _addedByController.clear();
+                  _bpmController.clear();
+                  _rhythmController.clear();
+                  _lyricsController.clear();
+                  setState(() {
+                    _selectedChord = null;
+                  });
                 }
               },
-              style: ElevatedButton.styleFrom(minimumSize: const Size(200, 50)),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(200, 50),
+                backgroundColor: Colors.blueGrey[900], 
+                foregroundColor: Colors.white,
+              ),
               child: const Text("Enregistrer la musique"),
             )
           ],
