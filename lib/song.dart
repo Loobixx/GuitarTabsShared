@@ -1,4 +1,5 @@
 class Song {
+  String? id; 
   final String title;
   final String artist;
   final String composer;
@@ -9,6 +10,7 @@ class Song {
   final List<String> lyrics;
 
   Song({
+    this.id, 
     required this.title,
     required this.artist,
     required this.composer,
@@ -19,7 +21,6 @@ class Song {
     required this.lyrics,
   });
 
-  // 🛠️ 1. Pour envoyer vers Firebase
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -33,9 +34,9 @@ class Song {
     };
   }
 
-  // 🛠️ 2. Pour recevoir depuis Firebase
-  factory Song.fromMap(Map<String, dynamic> map) {
+  factory Song.fromMap(Map<String, dynamic> map, String documentId) {
     return Song(
+      id: documentId,
       title: map['title'] ?? 'Sans Titre',
       artist: map['artist'] ?? 'Inconnu',
       composer: map['composer'] ?? '',
@@ -47,11 +48,9 @@ class Song {
     );
   }
 
-
-  // 🛠️ Le Getter magique : Extrait automatiquement les accords uniques des paroles
   List<String> get chords {
     final RegExp regExp = RegExp(r'\[(.*?)\]');
-    final Set<String> uniqueChords = {}; // Un Set empêche naturellement les doublons
+    final Set<String> uniqueChords = {};
 
     for (var line in lyrics) {
       final matches = regExp.allMatches(line);
