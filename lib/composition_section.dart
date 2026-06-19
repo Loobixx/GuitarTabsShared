@@ -21,6 +21,7 @@ class _CompositionSectionState extends State<CompositionSection> {
   final _bpmController = TextEditingController();
   final _rhythmController = TextEditingController();
   final _lyricsController = TextEditingController();
+  final _capoController = TextEditingController();
 
   String? _selectedChord; 
   List<String> availableChords = ["C", "G", "Em", "D", "Am", "F", "Bm"];
@@ -35,9 +36,10 @@ class _CompositionSectionState extends State<CompositionSection> {
       _artistController.text = s.artist;
       _composerController.text = s.composer;
       _addedByController.text = s.addedBy;
-      _bpmController.text = s.bpm.toString();
+      _bpmController.text = s.bpm > 0 ? s.bpm.toString() : '';
       _rhythmController.text = s.rhythm;
       _lyricsController.text = s.lyrics.join('\n');
+      _capoController.text = s.capo > 0 ? s.capo.toString() : ''; 
     }
   }
 
@@ -95,8 +97,7 @@ class _CompositionSectionState extends State<CompositionSection> {
             child: Form(
               key: _formKey,
               child: ListView(
-                // 🛠️ 4. On met 80px de marge en haut en mode édition pour que le titre commence SOUS la flèche au démarrage
-                padding: EdgeInsets.only(left: 24, right: 24, top: isEditing ? 80 : 24, bottom: 100),
+                padding: const EdgeInsets.only(left: 24, right: 24, top: 130, bottom: 100),
                 children: [
                   Text(
                     isEditing ? "Modifier les détails" : "Créer une nouvelle Tablature", 
@@ -119,9 +120,22 @@ class _CompositionSectionState extends State<CompositionSection> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: TextFormField(controller: _bpmController, decoration: const InputDecoration(labelText: "BPM", prefixIcon: Icon(Icons.timer)), keyboardType: TextInputType.number)),
+                      Expanded(
+                        flex: 2, 
+                        child: TextFormField(
+                          controller: _bpmController, 
+                          decoration: const InputDecoration(
+                            labelText: "BPM", 
+                            // Si tu veux garder l'icône, enlève le labelText ou utilise un hintText à la place.
+                            // Pour une lecture propre, je suggère de ne mettre l'icône QUE si l'écran est large :
+                          ), 
+                          keyboardType: TextInputType.number,
+                        )
+                      ),                      const SizedBox(width: 16),
+                      // 🛠️ NOUVEAU CHAMP CAPO
+                      Expanded(flex: 2, child: TextFormField(controller: _capoController, decoration: const InputDecoration(labelText: "Capo (0-12)"), keyboardType: TextInputType.number)),
                       const SizedBox(width: 16),
-                      Expanded(child: TextFormField(controller: _rhythmController, decoration: const InputDecoration(labelText: "Rythme (ex: B B H H B H) *"))),
+                      Expanded(flex: 4, child: TextFormField(controller: _rhythmController, decoration: const InputDecoration(labelText: "Rythme (ex: B B H H B H) *"))),
                     ],
                   ),
                   
@@ -191,7 +205,8 @@ class _CompositionSectionState extends State<CompositionSection> {
                           composer: _composerController.text,
                           addedBy: _addedByController.text,
                           imageUrl: "https://i.scdn.co/image/ab67616d0000b273f1e3c5e4a1f2c3e4a5b6c7d8", 
-                          bpm: int.tryParse(_bpmController.text) ?? 100, 
+                          bpm: int.tryParse(_bpmController.text) ?? 0, 
+                          capo: int.tryParse(_capoController.text) ?? 0, 
                           rhythm: _rhythmController.text,
                           lyrics: _lyricsController.text.split('\n'), 
                         );
@@ -227,6 +242,7 @@ class _CompositionSectionState extends State<CompositionSection> {
                             _composerController.clear();
                             _addedByController.clear();
                             _bpmController.clear();
+                            _capoController.clear();
                             _rhythmController.clear();
                             _lyricsController.clear();
                             setState(() {

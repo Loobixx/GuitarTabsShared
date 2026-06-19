@@ -65,59 +65,78 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // 🛠️ TRÈS IMPORTANT : Permet au fond coloré de glisser SOUS la barre de navigation
+      extendBody: true, 
       
-      // 🛠️ LE NOUVEAU FOND MODERNE (Dégradé très doux Bleu Ciel -> Bleu Lavande)
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF0F9FF), // Un bleu ciel extrêmement clair (quasi blanc)
-              Color(0xFFE0E7FF), // Un bleu lavande très doux
-            ],
+            colors: [Color(0xFFF0F9FF), Color(0xFFE0E7FF)],
           ),
         ),
         child: SafeArea(
-          bottom: false, // Laisse le dégradé descendre jusqu'en bas de l'écran
-          child: Column(
+          bottom: false, 
+          child: Stack(
             children: [
-              // --- HEADER RÉDUIT POUR MOBILE ---
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12), // 🛠️ Beaucoup moins d'espace vide
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'SharedTabs 🎸',
-                      style: TextStyle(
-                        fontSize: 24, // 🛠️ Réduit de 32 à 24 pour ne plus écraser les cartes
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.0, 
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8), // Icône de profil légèrement plus petite
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.7), // Effet un peu transparent (Glassmorphism)
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-                        ]
-                      ),
-                      child: const Icon(Icons.person_outline, color: Color(0xFF1E293B), size: 22),
-                    )
-                  ],
-                ),
+              // --- 1. LE CONTENU (En dessous) ---
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _pages[_currentIndex],
               ),
               
-              // --- LE CONTENU ---
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _pages[_currentIndex],
+              // --- 2. LE MASQUE EN DÉGRADÉ (Doux et plus grand) ---
+              Positioned(
+                top: 0, left: 0, right: 0,
+                child: IgnorePointer( // 🛠️ Rend le dégradé "fantôme" pour les clics
+                  child: Container(
+                    height: 140, // 🛠️ Plus haut pour un fondu très progressif
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFFF0F9FF), 
+                          const Color(0xFFF0F9FF).withOpacity(0.9), 
+                          const Color(0xFFF0F9FF).withOpacity(0.0), 
+                        ],
+                        stops: const [0.4, 0.75, 1.0], 
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // --- 3. LE HEADER "SHAREDTABS" (Par dessus le masque) ---
+              Positioned(
+                top: 0, left: 0, right: 0,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0), 
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'SharedTabs 🎸',
+                        style: TextStyle(
+                          fontSize: 24, 
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.0, 
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(8), 
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.7), 
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                          ]
+                        ),
+                        child: const Icon(Icons.person_outline, color: Color(0xFF1E293B), size: 22),
+                      )
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -125,34 +144,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
       ),
       
-      // --- LA BARRE DE NAVIGATION EN FORME DE PILULE ---
+      // --- LA BARRE DE NAVIGATION (Correction du débordement) ---
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16), 
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Container(
-                  height: 65, // Barre légèrement plus fine
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B), 
-                    borderRadius: BorderRadius.circular(35), 
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF1E293B).withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      )
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildNavItem(Icons.library_music_rounded, "Tablatures", 0),
-                      _buildNavItem(Icons.add_circle_rounded, "Composer", 1),
-                    ],
+              Flexible( // 🛠️ CORRECTION 1 : Permet à la boîte globale de rétrécir
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Container(
+                    height: 65, 
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B), 
+                      borderRadius: BorderRadius.circular(35), 
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1E293B).withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        )
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        // 🛠️ CORRECTION 2 : Flexible sur les boutons
+                        Flexible(child: _buildNavItem(Icons.library_music_rounded, "Tablatures", 0)),
+                        Flexible(child: _buildNavItem(Icons.add_circle_rounded, "Composer", 1)),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -164,7 +186,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   // LE BOUTON DE NAVIGATION ANIMÉ
-Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = _currentIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
@@ -178,20 +200,16 @@ Widget _buildNavItem(IconData icon, String label, int index) {
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min, // 🛠️ S'adapte à son contenu
           children: [
-            Icon(
-              icon, 
-              color: isSelected ? Colors.white : Colors.white54,
-              size: 24,
-            ),
+            Icon(icon, color: isSelected ? Colors.white : Colors.white54, size: 24),
             if (isSelected) ...[
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+              Flexible( // 🛠️ CORRECTION 3 : Le texte peut se couper proprement avec "..." au lieu d'exploser
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
             ]
