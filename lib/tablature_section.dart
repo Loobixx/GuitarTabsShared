@@ -5,79 +5,99 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:guitar_shared_tabs/composition_section.dart';
 import 'package:guitar_shared_tabs/song.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class TablatureSection extends StatefulWidget {
-  
   const TablatureSection({super.key});
 
   @override
   State<TablatureSection> createState() => _TablatureSectionState();
 }
-class _TablatureSectionState extends State<TablatureSection> {
 
+class _TablatureSectionState extends State<TablatureSection> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('songs').snapshots(),
-      builder: (context, snapshot) {
+    return Column(
+      children: [
+        // 1. LA BARRE DE RECHERCHE EST HORS DU STREAMBUILDER
+        // Elle ne sera JAMAIS reconstruite quand Firebase envoie de nouvelles données.
+        // On met un padding top: 140 pour tenir compte de ton Header dans le main.dart
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 140, 16, 16),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() => _searchQuery = val),
+            decoration: InputDecoration(
+              hintText: "Rechercher...",
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF0EA5E9)),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+            ),
+          ),
+        ),
         
-        // 1. Si ça charge, on affiche un petit loader
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+        // 2. LE STREAMBUILDER NE GÈRE QUE LA LISTE
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('songs').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) return Center(child: Text("Erreur : ${snapshot.error}"));
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text("Aucune tablature pour le moment."));
+              }
 
-        // 2. S'il y a une erreur
-        if (snapshot.hasError) {
-          return Center(child: Text("Erreur : ${snapshot.error}"));
-        }
+              // Récupération et filtrage
+              final List<Song> allSongs = snapshot.data!.docs.map((doc) {
+                return Song.fromMap(doc.data() as Map<String, dynamic>, doc.id); 
+              }).toList();
 
-        // 3. Si la base de données est vide
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("Aucune tablature pour le moment.\nAllez dans Composition pour en créer une !", textAlign: TextAlign.center,));
-        }
+              final filteredSongs = allSongs.where((song) {
+                final query = _searchQuery.toLowerCase();
+                return song.title.toLowerCase().contains(query) || 
+                       song.artist.toLowerCase().contains(query);
+              }).toList();
 
-        // 4. On transforme les documents Firebase en liste d'objets Song
-        final List<Song> songs = snapshot.data!.docs.map((doc) {
-          return Song.fromMap(doc.data() as Map<String, dynamic>, doc.id); 
-        }).toList();
-
-        // 5. On affiche la liste exactement comme avant !
-        return ListView.separated(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 100),
-          itemCount: songs.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            final song = songs[index];
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800), 
-                child: GestureDetector(
-                  onTap: () => _openSongDetails(song),
-                  child: Container(
-                    padding: const EdgeInsets.all(8.0), // Un peu plus d'air à l'intérieur
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16), // Plus arrondi
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05), // Ombre plus douce et moderne
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        )
-                      ],
+              // Affichage de la liste seule
+              return ListView.separated(
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
+                itemCount: filteredSongs.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 16),
+                itemBuilder: (context, index) {
+                  final song = filteredSongs[index];
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800), 
+                      child: GestureDetector(
+                        onTap: () => _openSongDetails(song),
+                        child: Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                          child: _buildCardView(song),
+                        ),
+                      ),
                     ),
-                    child: _buildCardView(song),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
-
 
   // FONCTION POUR OUVRIR LA MODIFICATION
   void _editSong(Song song) {
@@ -162,7 +182,7 @@ class _TablatureSectionState extends State<TablatureSection> {
               children: [
                 Text(
                   song.title, 
-                  style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold, height: 1.1),
+                  style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold, height: 1.1, color: const Color(0xFF1E293B)),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -175,7 +195,7 @@ class _TablatureSectionState extends State<TablatureSection> {
                 ),
                 const SizedBox(height: 4),
                 
-                Wrap(
+Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 8, // Espace horizontal
                   runSpacing: 4, // Espace vertical si ça passe à la ligne
@@ -187,11 +207,29 @@ class _TablatureSectionState extends State<TablatureSection> {
                         Icon(Icons.timer_outlined, size: isMobile ? 14 : 16, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
-                          "${song.bpm} BPM",
+                          song.bpm > 0 ? "${song.bpm} BPM" : "?? BPM",
                           style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 10 : 12, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
+                    
+                    // 🛠️ NOUVEAU : LE BADGE DU CAPO SUR LA CARTE
+                    if (song.capo > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF5A5F).withOpacity(0.1), // Un fond rouge très léger
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          "Capo ${song.capo}",
+                          style: TextStyle(
+                            color: const Color(0xFFFF5A5F), 
+                            fontSize: isMobile ? 10 : 12, 
+                            fontWeight: FontWeight.bold
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 
@@ -213,25 +251,25 @@ class _TablatureSectionState extends State<TablatureSection> {
             ),
           ),
         ),
-        // NOUVEAU : LA COLONNE DES BOUTONS D'ACTION
+        // LA COLONNE DES BOUTONS D'ACTION
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                decoration: BoxDecoration(color: Colors.blue[50], shape: BoxShape.circle),
+                decoration: BoxDecoration(color: const Color(0xFFE0F2FE), shape: BoxShape.circle),
                 child: IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                  icon: const Icon(Icons.edit, color: Color(0xFF0EA5E9), size: 20),
                   onPressed: () => _editSong(song),
                   tooltip: "Modifier",
                 ),
               ),
               const SizedBox(height: 8),
               Container(
-                decoration: BoxDecoration(color: Colors.red[50], shape: BoxShape.circle),
+                decoration: BoxDecoration(color: const Color(0xFFFFE4E6), shape: BoxShape.circle),
                 child: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  icon: const Icon(Icons.delete_outline, color: Color(0xFFFF5A5F), size: 20),
                   onPressed: () => _deleteSong(song),
                   tooltip: "Supprimer",
                 ),
@@ -271,7 +309,7 @@ class _TablatureSectionState extends State<TablatureSection> {
 }
 
 // =========================================================================
-// NOUVEAU WIDGET : LA PAGE DÉTAILLÉE DE LA CHANSON (AVEC MÉTRONOME)
+// WIDGET : LA PAGE DÉTAILLÉE DE LA CHANSON (AVEC MÉTRONOME & NOUVEAU DESIGN)
 // =========================================================================
 
 class SongDetailView extends StatefulWidget {
@@ -286,9 +324,16 @@ class _SongDetailViewState extends State<SongDetailView> {
   bool _isPlayingMetronome = false;
   Timer? _metronomeTimer;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  
+  @override
+  void initState() {
+    super.initState();
+    WakelockPlus.enable(); // L'écran reste allumé
+  }
 
   @override
   void dispose() {
+    WakelockPlus.disable(); // L'écran peut s'éteindre normalement
     _metronomeTimer?.cancel();
     _audioPlayer.dispose();
     super.dispose();
@@ -299,19 +344,12 @@ class _SongDetailViewState extends State<SongDetailView> {
       _metronomeTimer?.cancel();
       setState(() => _isPlayingMetronome = false);
     } else {
-      // Précharge le son pour éviter le lag au premier tic
       await _audioPlayer.setSource(AssetSource('tick.mp3')); 
-      
-      // Calcule le temps entre chaque battement en millisecondes
-      // Formule : (60 secondes / BPM) * 1000 millisecondes
       int msPerBeat = (60000 / widget.song.bpm).round();
 
       setState(() => _isPlayingMetronome = true);
-
-      // Joue le premier coup immédiatement
       _playTick();
 
-      // Lance la boucle
       _metronomeTimer = Timer.periodic(Duration(milliseconds: msPerBeat), (timer) {
         _playTick();
       });
@@ -320,98 +358,166 @@ class _SongDetailViewState extends State<SongDetailView> {
 
   void _playTick() async {
     if (_audioPlayer.state == PlayerState.playing) {
-      await _audioPlayer.stop(); // Coupe le son précédent s'il était encore en train de résonner
+      await _audioPlayer.stop(); 
     }
-    await _audioPlayer.resume(); // Joue le tic
+    await _audioPlayer.resume(); 
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, 
+      backgroundColor: Colors.transparent, // 🛠️ 1. Fond transparent
+      
+      extendBodyBehindAppBar: true, // 🛠️ 2. Le texte passe sous la barre
+      
       appBar: AppBar(
-        backgroundColor: Colors.blueGrey[900],
+        backgroundColor: Colors.transparent, // 🛠️ 3. Barre invisible
         elevation: 0,
+        scrolledUnderElevation: 0, // Interdit le grisage au scroll
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B)), // Flèche moderne
           onPressed: () => Navigator.of(context).pop(), 
         ),
-        title: Text(widget.song.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.song.title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(
-              "Compositeur : ${widget.song.composer} | Ajouté par : ${widget.song.addedBy}", 
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // LE PANNEAU D'INFORMATION ET MÉTRONOME
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blueGrey[100]!),
+      
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF0F9FF), Color(0xFFE0E7FF)], // 🛠️ 4. Le même dégradé bleu !
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 100.0, bottom: 40.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.song.title, 
+                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF1E293B), letterSpacing: -1.0)
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Affichage du Rythme
-                        Row(
-                          children: [
-                            const Text("Rythme : ", style: TextStyle(fontWeight: FontWeight.bold)),
-                            _buildRhythmArrows(widget.song.rhythm),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Affichage des Accords
-                        Row(
-                          children: [
-                            const Text("Accords : ", style: TextStyle(fontWeight: FontWeight.bold)),
-                            Wrap(
-                              spacing: 6,
-                              children: widget.song.chords.map((chord) => Text(
-                                chord, 
-                                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
-                              )).toList(),
-                            )
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Le bouton Métronome
-                  Column(
-                    children: [
-                      Text("${widget.song.bpm} BPM", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 4),
-                      FloatingActionButton.small(
-                        backgroundColor: _isPlayingMetronome ? Colors.redAccent : Colors.blueGrey[900],
-                        onPressed: _toggleMetronome,
-                        child: Icon(_isPlayingMetronome ? Icons.stop : Icons.play_arrow, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ],
+              const SizedBox(height: 6),
+              Text(
+                "Compositeur : ${widget.song.composer}  •  Ajouté par : ${widget.song.addedBy}", 
+                style: TextStyle(color: Colors.blueGrey[600], fontSize: 14, fontWeight: FontWeight.w500),
               ),
-            ),
 
-            const Divider(height: 40, thickness: 1),
-            
-            // Les paroles
-            ...widget.song.lyrics.map((rawLine) => _buildLyricsLine(rawLine)),
-          ],
+              if (widget.song.capo > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF5A5F).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "🎸 Capo : Frette ${widget.song.capo}", 
+                    style: const TextStyle(color: Color(0xFFFF5A5F), fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 32),
+              
+              // LE PANNEAU D'INFORMATION ET MÉTRONOME
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.6), // Effet un peu transparent (Glassmorphism)
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+                  ]
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text("Rythme : ", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                              _buildRhythmArrows(widget.song.rhythm),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(top: 2.0),
+                                child: Text("Accords : ", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                              ),
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: widget.song.chords.map((chord) => Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0EA5E9).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6)
+                                    ),
+                                    child: Text(
+                                      chord, 
+                                      style: const TextStyle(color: Color(0xFF0EA5E9), fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  )).toList(),
+                                ),
+                              )
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Le bouton Métronome
+                    // Le bouton Métronome
+                    Container(
+                      padding: const EdgeInsets.only(left: 16),
+                      decoration: BoxDecoration(
+                        border: Border(left: BorderSide(color: Colors.blueGrey.withOpacity(0.2)))
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            // 🛠️ 2. Affiche ?? si c'est 0
+                            widget.song.bpm > 0 ? "${widget.song.bpm} BPM" : "?? BPM", 
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1E293B))
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          // 🛠️ 3. On affiche le bouton de lecture UNIQUEMENT si on a un vrai BPM
+                          if (widget.song.bpm > 0)
+                            FloatingActionButton.small(
+                              elevation: 0,
+                              backgroundColor: _isPlayingMetronome ? const Color(0xFFFF5A5F) : const Color(0xFF0EA5E9),
+                              onPressed: _toggleMetronome,
+                              child: Icon(_isPlayingMetronome ? Icons.stop_rounded : Icons.play_arrow_rounded, color: Colors.white),
+                            )
+                          else
+                            // Sinon on met un petit chrono barré mignon pour dire qu'il n'y a pas de métronome
+                            const Padding(
+                              padding: EdgeInsets.only(top: 4.0),
+                              child: Icon(Icons.timer_off_outlined, color: Colors.grey, size: 28),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+              
+              // Les paroles
+              ...widget.song.lyrics.map((rawLine) => _buildLyricsLine(rawLine)),
+            ],
+          ),
         ),
       ),
     );
@@ -424,7 +530,7 @@ class _SongDetailViewState extends State<SongDetailView> {
     if (matches.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Text(rawLine, style: const TextStyle(fontSize: 18)),
+        child: Text(rawLine, style: const TextStyle(fontSize: 18, color: Color(0xFF1E293B))),
       );
     }
 
@@ -463,11 +569,11 @@ class _SongDetailViewState extends State<SongDetailView> {
             Text(
               (i == 0 && chord != null) ? chord : "",
               style: TextStyle(
-                color: (i == 0 && chord != null) ? Colors.red : Colors.transparent,
+                color: (i == 0 && chord != null) ? const Color(0xFFFF5A5F) : Colors.transparent, // Rouge moderne pour les accords
                 fontWeight: FontWeight.bold, fontSize: 16, height: 1.2,
               ),
             ),
-            Text(wordText, style: const TextStyle(fontSize: 18, height: 1.2)),
+            Text(wordText, style: const TextStyle(fontSize: 18, height: 1.2, color: Color(0xFF1E293B))),
           ],
         )
       );
@@ -482,9 +588,9 @@ Widget _buildRhythmArrows(String rhythm, {bool isMobile = false}) {
   for (int i = 0; i < rhythm.length; i++) {
     String char = rhythm[i].toUpperCase();
     if (char == 'B' || char == 'D') { 
-      arrows.add(Icon(Icons.arrow_downward, size: iconSize, color: Colors.blueGrey[800]));
+      arrows.add(Icon(Icons.arrow_downward, size: iconSize, color: const Color(0xFF1E293B)));
     } else if (char == 'H' || char == 'U') { 
-      arrows.add(Icon(Icons.arrow_upward, size: iconSize, color: Colors.blueGrey[800]));
+      arrows.add(Icon(Icons.arrow_upward, size: iconSize, color: const Color(0xFF1E293B)));
     } else if (char == ' ') {
       arrows.add(const SizedBox(width: 4)); 
     }

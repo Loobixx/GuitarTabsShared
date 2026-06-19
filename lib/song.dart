@@ -6,6 +6,7 @@ class Song {
   final String addedBy;
   final String imageUrl;
   final int bpm;
+  final int capo; 
   final String rhythm;
   final List<String> lyrics;
 
@@ -17,6 +18,7 @@ class Song {
     required this.addedBy,
     required this.imageUrl,
     required this.bpm,
+    this.capo = 0, 
     required this.rhythm,
     required this.lyrics,
   });
@@ -29,6 +31,7 @@ class Song {
       'addedBy': addedBy,
       'imageUrl': imageUrl,
       'bpm': bpm,
+      'capo': capo,
       'rhythm': rhythm,
       'lyrics': lyrics,
     };
@@ -42,7 +45,8 @@ class Song {
       composer: map['composer'] ?? '',
       addedBy: map['addedBy'] ?? '',
       imageUrl: map['imageUrl'] ?? 'https://i.scdn.co/image/ab67616d0000b273f1e3c5e4a1f2c3e4a5b6c7d8',
-      bpm: map['bpm']?.toInt() ?? 100,
+      bpm: map['bpm']?.toInt() ?? 0,
+      capo: map['capo']?.toInt() ?? 0, 
       rhythm: map['rhythm'] ?? '',
       lyrics: List<String>.from(map['lyrics'] ?? []),
     );
