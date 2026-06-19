@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:guitar_shared_tabs/chord_creator.dart';
+import 'package:guitar_shared_tabs/manage_chords_page.dart';
 import 'firebase_options.dart';
 import 'package:guitar_shared_tabs/composition_section.dart';
 import 'package:guitar_shared_tabs/tablature_section.dart';
@@ -60,6 +62,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _pages = [
     const TablatureSection(),
     const CompositionSection(),
+    const ManageChordsPage(), 
   ];
 
   @override
@@ -172,7 +175,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       children: [
                         // 🛠️ CORRECTION 2 : Flexible sur les boutons
                         Flexible(child: _buildNavItem(Icons.library_music_rounded, "Tablatures", 0)),
-                        Flexible(child: _buildNavItem(Icons.add_circle_rounded, "Composer", 1)),
+                        Flexible(child: _buildNavItem(Icons.queue_music_rounded, "Composer", 1)),
+                        Flexible(child: _buildNavItem(Icons.grid_4x4_rounded, "Accords", 2)),
                       ],
                     ),
                   ),
@@ -188,28 +192,40 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   // LE BOUTON DE NAVIGATION ANIMÉ
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = _currentIndex == index;
+    
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
       behavior: HitTestBehavior.opaque,
+      onTap: () {
+        // 🛠️ C'est tout ce qu'il faut ! On change juste d'onglet naturellement.
+        setState(() => _currentIndex = index); 
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min, // 🛠️ S'adapte à son contenu
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: isSelected ? Colors.white : Colors.white54, size: 24),
+            Icon(
+              icon, 
+              color: isSelected ? Colors.white : Colors.white54, 
+              size: 24
+            ),
             if (isSelected) ...[
               const SizedBox(width: 8),
-              Flexible( // 🛠️ CORRECTION 3 : Le texte peut se couper proprement avec "..." au lieu d'exploser
+              Flexible(
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    color: Colors.white, 
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 14
+                  ),
                 ),
               ),
             ]

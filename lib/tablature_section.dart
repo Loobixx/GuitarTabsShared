@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:async'; 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:guitar_shared_tabs/chord_visualizer.dart';
 import 'package:guitar_shared_tabs/composition_section.dart';
 import 'package:guitar_shared_tabs/song.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -325,6 +326,21 @@ class _SongDetailViewState extends State<SongDetailView> {
   Timer? _metronomeTimer;
   final AudioPlayer _audioPlayer = AudioPlayer();
   
+  // 1. Remplace ta fonction actuelle par celle-ci
+  Future<List<int>> _getFretsForChord(String chordName) async {
+    // On va chercher dans la collection 'chords' le document qui a le nom de l'accord
+    final query = await FirebaseFirestore.instance
+        .collection('chords')
+        .where('name', isEqualTo: chordName)
+        .get();
+
+    // Si on trouve le document, on récupère la liste des frettes, sinon on met une valeur par défaut
+    if (query.docs.isNotEmpty) {
+      return List<int>.from(query.docs.first['frets']);
+    }
+    return [0, 0, 0, 0, 0, 0]; 
+  }
+
   @override
   void initState() {
     super.initState();
@@ -456,15 +472,37 @@ class _SongDetailViewState extends State<SongDetailView> {
                                 child: Wrap(
                                   spacing: 6,
                                   runSpacing: 6,
-                                  children: widget.song.chords.map((chord) => Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0EA5E9).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6)
-                                    ),
-                                    child: Text(
-                                      chord, 
-                                      style: const TextStyle(color: Color(0xFF0EA5E9), fontWeight: FontWeight.bold, fontSize: 14),
+                                  children: widget.song.chords.map((chord) => GestureDetector(
+                                    // 🛠️ ON REND L'ACCORD CLIQUABLE
+                                    onTap: () async { // 1. Ajoute 'async' ici
+                                      // 2. Récupère les frettes depuis Firebase
+                                      final frets = await _getFretsForChord(chord); 
+                                      
+                                      // 3. Affiche la popup seulement si le composant est toujours monté
+                                      if (mounted) {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          builder: (ctx) => ChordVisualizer(
+                                            name: chord, 
+                                            frets: frets // 4. Utilise la variable 'frets' récupérée
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0EA5E9).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6)
+                                      ),
+                                      child: Text(
+                                        chord, 
+                                        style: const TextStyle(
+                                          color: Color(0xFF0EA5E9), 
+                                          fontWeight: FontWeight.bold, 
+                                          fontSize: 14
+                                        ),
+                                      ),
                                     ),
                                   )).toList(),
                                 ),
@@ -566,11 +604,30 @@ class _SongDetailViewState extends State<SongDetailView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              (i == 0 && chord != null) ? chord : "",
-              style: TextStyle(
-                color: (i == 0 && chord != null) ? const Color(0xFFFF5A5F) : Colors.transparent, // Rouge moderne pour les accords
-                fontWeight: FontWeight.bold, fontSize: 16, height: 1.2,
+            GestureDetector(
+              onTap: (i == 0 && chord != null) 
+                ? () async { // 1. Ajoute 'async' ici
+                    // 2. Attend le résultat de Firebase
+                    final frets = await _getFretsForChord(chord!); 
+                    
+                    // 3. Ouvre la popup en vérifiant que la page est toujours là
+                    if (mounted) {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (ctx) => ChordVisualizer(
+                          name: chord, 
+                          frets: frets // 4. Utilise la liste qu'on vient de récupérer
+                        ),
+                      );
+                    }
+                  }
+                : null,
+              child: Text(
+                (i == 0 && chord != null) ? chord : "",
+                style: TextStyle(
+                  color: (i == 0 && chord != null) ? const Color(0xFFFF5A5F) : Colors.transparent,
+                  fontWeight: FontWeight.bold, fontSize: 16, height: 1.2,
+                ),
               ),
             ),
             Text(wordText, style: const TextStyle(fontSize: 18, height: 1.2, color: Color(0xFF1E293B))),
