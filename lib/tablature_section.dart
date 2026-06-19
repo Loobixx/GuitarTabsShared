@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:async'; // 👈 Pour le Timer du métronome
 import 'package:audioplayers/audioplayers.dart'; // 👈 Pour le son
@@ -6,9 +7,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class TablatureSection extends StatefulWidget {
   // 1. 🛠️ On demande la liste de chansons
-  final List<Song> songs;
   
-  const TablatureSection({super.key, required this.songs});
+  const TablatureSection({super.key});
 
   @override
   State<TablatureSection> createState() => _TablatureSectionState();
@@ -17,35 +17,58 @@ class _TablatureSectionState extends State<TablatureSection> {
   // SUPPRIME l'ancienne liste _songs qui était ici.
   // Tu l'utiliseras désormais en tapant `widget.songs`
 
-@override
+  @override
   Widget build(BuildContext context) {
-    // Fini le LayoutBuilder et les calculs de ratio compliqués !
-    // On utilise une simple ListView.separated pour afficher 1 élément par ligne
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: widget.songs.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16), // Espace vertical entre les cartes
-      itemBuilder: (context, index) {
-        final song = widget.songs[index];
+    // 🛠️ Le StreamBuilder écoute la collection 'songs' en temps réel
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('songs').snapshots(),
+      builder: (context, snapshot) {
+        
+        // 1. Si ça charge, on affiche un petit loader
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-        return Center(
-          child: ConstrainedBox(
-            // 🛠️ Bloque la largeur sur PC pour ne pas avoir une carte géante étirée sur 2 mètres de large
-            constraints: const BoxConstraints(maxWidth: 800), 
-            child: GestureDetector(
-              onTap: () => _openSongDetails(song),
-              child: Container(
-                // Petit padding interne pour laisser la carte respirer
-                padding: const EdgeInsets.all(4.0), 
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        // 2. S'il y a une erreur
+        if (snapshot.hasError) {
+          return Center(child: Text("Erreur : ${snapshot.error}"));
+        }
+
+        // 3. Si la base de données est vide
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("Aucune tablature pour le moment.\nAllez dans Composition pour en créer une !", textAlign: TextAlign.center,));
+        }
+
+        // 4. On transforme les documents Firebase en liste d'objets Song
+        final List<Song> songs = snapshot.data!.docs.map((doc) {
+          return Song.fromMap(doc.data() as Map<String, dynamic>);
+        }).toList();
+
+        // 5. On affiche la liste exactement comme avant !
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: songs.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 16),
+          itemBuilder: (context, index) {
+            final song = songs[index];
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800), 
+                child: GestureDetector(
+                  onTap: () => _openSongDetails(song),
+                  child: Container(
+                    padding: const EdgeInsets.all(4.0), 
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    ),
+                    child: _buildCardView(song),
+                  ),
                 ),
-                child: _buildCardView(song),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

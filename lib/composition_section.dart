@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:guitar_shared_tabs/song.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CompositionSection extends StatefulWidget {
-  final Function(Song) onSongAdded;
   
-  const CompositionSection({super.key, required this.onSongAdded});
+  const CompositionSection({super.key});
 
   @override
   State<CompositionSection> createState() => _CompositionSectionState();
@@ -135,7 +135,7 @@ class _CompositionSectionState extends State<CompositionSection> {
             const SizedBox(height: 20),
             
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   final newSong = Song(
                     title: _titleController.text,
@@ -148,8 +148,12 @@ class _CompositionSectionState extends State<CompositionSection> {
                     lyrics: _lyricsController.text.split('\n'), 
                   );
                   
-                  widget.onSongAdded(newSong);
-                  
+                  // 🛠️ ON ENVOIE DIRECTEMENT SUR FIREBASE
+                  await FirebaseFirestore.instance.collection('songs').add(newSong.toMap());
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Tablature sauvegardée dans le Cloud ! ☁️'), backgroundColor: Colors.green),
+                  );                  
                   _titleController.clear();
                   _artistController.clear();
                   _composerController.clear();
