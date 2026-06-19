@@ -3,8 +3,9 @@ import 'package:guitar_shared_tabs/song.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CompositionSection extends StatefulWidget {
+  final Song? songToEdit;
   
-  const CompositionSection({super.key});
+const CompositionSection({super.key, this.songToEdit});
 
   @override
   State<CompositionSection> createState() => _CompositionSectionState();
@@ -23,6 +24,21 @@ class _CompositionSectionState extends State<CompositionSection> {
 
   String? _selectedChord; 
   List<String> availableChords = ["C", "G", "Em", "D", "Am", "F", "Bm"];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.songToEdit != null) {
+      final s = widget.songToEdit!;
+      _titleController.text = s.title;
+      _artistController.text = s.artist;
+      _composerController.text = s.composer;
+      _addedByController.text = s.addedBy;
+      _bpmController.text = s.bpm.toString();
+      _rhythmController.text = s.rhythm;
+      _lyricsController.text = s.lyrics.join('\n');
+    }
+  }
 
   void _insertChordInLyrics() {
     if (_selectedChord == null) return;
@@ -45,135 +61,109 @@ class _CompositionSectionState extends State<CompositionSection> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            const Text("Créer une nouvelle Tablature", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            
-            // 🛠️ Titre (Obligatoire)
-            TextFormField(
-              controller: _titleController, 
-              decoration: const InputDecoration(labelText: "Titre de la chanson *"),
-              validator: (value) => value == null || value.isEmpty ? 'Veuillez entrer un titre' : null,
-            ),
-            
-            // 🛠️ Artiste (Obligatoire)
-            TextFormField(
-              controller: _artistController, 
-              decoration: const InputDecoration(labelText: "Artiste / Groupe original *"),
-              validator: (value) => value == null || value.isEmpty ? 'Veuillez renseigner l\'artiste' : null,
-            ),
-            
-            // 🛠️ Compositeur (Optionnel)
-            TextFormField(
-              controller: _composerController, 
-              decoration: const InputDecoration(labelText: "Nom du compositeur (optionnel)")
-            ),
-            
-            // 🛠️ Contributeur (Obligatoire)
-            TextFormField(
-              controller: _addedByController, 
-              decoration: const InputDecoration(labelText: "Votre nom (Contributeur) *"),
-              validator: (value) => value == null || value.isEmpty ? 'Veuillez renseigner votre nom' : null,
-            ),
-            
-            Row(
+      backgroundColor: Colors.transparent, // 👈 AJOUTE CETTE LIGNE ICI !
+      appBar: widget.songToEdit != null 
+        ? AppBar(
+            title: const Text("Modifier la tablature", style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.blueGrey[900],
+            iconTheme: const IconThemeData(color: Colors.white),
+          ) 
+        : null,
+      body: Center( // 🛠️ On centre le tout
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800), // 🛠️ Largeur max bloquée comme pour les cartes !
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.only(left: 24, right: 24, top: 8, bottom: 100),
               children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _bpmController, 
-                    decoration: const InputDecoration(labelText: "BPM (ex: 120)"), 
-                    keyboardType: TextInputType.number,
-                  )
+                Text(
+                  widget.songToEdit == null ? "Créer une nouvelle Tablature" : "Modifier les détails", 
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueGrey[900])
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(height: 24),
                 
-                // 🛠️ Rythme (Obligatoire)
-                Expanded(
-                  child: TextFormField(
-                    controller: _rhythmController, 
-                    decoration: const InputDecoration(labelText: "Rythme (ex: B B H H B H) *"),
-                    validator: (value) => value == null || value.isEmpty ? 'Veuillez indiquer le rythme' : null,
-                  )
+                // --- BLOC INFOS ---
+                TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: "Titre de la chanson *", prefixIcon: Icon(Icons.music_note))),
+                const SizedBox(height: 16),
+                TextFormField(controller: _artistController, decoration: const InputDecoration(labelText: "Artiste / Groupe original *", prefixIcon: Icon(Icons.person))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: TextFormField(controller: _composerController, decoration: const InputDecoration(labelText: "Compositeur (optionnel)"))),
+                    const SizedBox(width: 16),
+                    Expanded(child: TextFormField(controller: _addedByController, decoration: const InputDecoration(labelText: "Votre nom *"))),
+                  ],
                 ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: TextFormField(controller: _bpmController, decoration: const InputDecoration(labelText: "BPM", prefixIcon: Icon(Icons.timer)), keyboardType: TextInputType.number)),
+                    const SizedBox(width: 16),
+                    Expanded(child: TextFormField(controller: _rhythmController, decoration: const InputDecoration(labelText: "Rythme (ex: B B H H B H) *"))),
+                  ],
+                ),
+                
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Divider(),
+                ),
+                
+                // --- BLOC PAROLES ---
+                const Text("Éditeur de paroles avec accords", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                  child: Wrap(
+                    spacing: 12, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, 
+                    children: [
+                      DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedChord,
+                          hint: const Text("Choisir un accord"),
+                          items: availableChords.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
+                          onChanged: (val) => setState(() => _selectedChord = val),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text("Insérer au curseur"),
+                        style: ElevatedButton.styleFrom(foregroundColor: Colors.deepOrange, backgroundColor: Colors.orange[50], elevation: 0),
+                        onPressed: _insertChordInLyrics,
+                      )
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                TextFormField(
+                  controller: _lyricsController,
+                  maxLines: 12,
+                  decoration: const InputDecoration(hintText: "Écrivez les paroles ici..."),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                ),
+                const SizedBox(height: 32),
+                
+                // --- BOUTON FINAL ---
+                ElevatedButton.icon(
+                  icon: Icon(widget.songToEdit == null ? Icons.save : Icons.check),
+                  label: Text(widget.songToEdit == null ? "Enregistrer la tablature" : "Mettre à jour la tablature", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    backgroundColor: Colors.deepOrange, // Couleur qui pète !
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 2,
+                  ),
+                  onPressed: () async {
+                    // ... GARDE TON CODE LOGIQUE EXACTEMENT COMME AVANT ICI ...
+                  },
+                ),
+                const SizedBox(height: 40),
               ],
             ),
-            const SizedBox(height: 24),
-            
-            const Text("Éditeur de paroles avec accords", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Wrap(
-              spacing: 12, // Espace horizontal entre le dropdown et le bouton
-              runSpacing: 12, // Espace vertical s'ils finissent sur deux lignes différentes
-              crossAxisAlignment: WrapCrossAlignment.center, // Aligne verticalement au centre
-              children: [
-                DropdownButton<String>(
-                  value: _selectedChord,
-                  hint: const Text("Choisir un accord"),
-                  items: availableChords.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  onChanged: (val) => setState(() => _selectedChord = val),
-                ),
-                ElevatedButton(
-                  onPressed: _insertChordInLyrics,
-                  child: const Text("Placer l'accord au curseur"),
-                )
-              ],
-            ),
-            const SizedBox(height: 12),
-            
-            TextFormField(
-              controller: _lyricsController,
-              maxLines: 10,
-              decoration: const InputDecoration(
-                hintText: "Écrivez les paroles ici. Utilisez le bouton ci-dessus pour insérer l'accord au bon endroit de la phrase !",
-                border: OutlineInputBorder(),
-              ),
-              style: const TextStyle(fontFamily: 'monospace'),
-            ),
-            const SizedBox(height: 20),
-            
-            ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  final newSong = Song(
-                    title: _titleController.text,
-                    artist: _artistController.text,
-                    composer: _composerController.text,
-                    addedBy: _addedByController.text,
-                    imageUrl: "https://i.scdn.co/image/ab67616d0000b273f1e3c5e4a1f2c3e4a5b6c7d8", 
-                    bpm: int.tryParse(_bpmController.text) ?? 100, 
-                    rhythm: _rhythmController.text,
-                    lyrics: _lyricsController.text.split('\n'), 
-                  );
-                  
-                  // 🛠️ ON ENVOIE DIRECTEMENT SUR FIREBASE
-                  await FirebaseFirestore.instance.collection('songs').add(newSong.toMap());
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tablature sauvegardée dans le Cloud ! ☁️'), backgroundColor: Colors.green),
-                  );                  
-                  _titleController.clear();
-                  _artistController.clear();
-                  _composerController.clear();
-                  _addedByController.clear();
-                  _bpmController.clear();
-                  _rhythmController.clear();
-                  _lyricsController.clear();
-                  setState(() {
-                    _selectedChord = null;
-                  });
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(200, 50),
-                backgroundColor: Colors.blueGrey[900], 
-                foregroundColor: Colors.white,
-              ),
-              child: const Text("Enregistrer la musique"),
-            )
-          ],
+          ),
         ),
       ),
     );

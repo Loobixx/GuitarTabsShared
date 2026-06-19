@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'dart:async'; // 👈 Pour le Timer du métronome
-import 'package:audioplayers/audioplayers.dart'; // 👈 Pour le son
+import 'dart:async'; 
+import 'package:audioplayers/audioplayers.dart';
+import 'package:guitar_shared_tabs/composition_section.dart';
 import 'package:guitar_shared_tabs/song.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class TablatureSection extends StatefulWidget {
-  // 1. 🛠️ On demande la liste de chansons
   
   const TablatureSection({super.key});
 
@@ -14,12 +14,10 @@ class TablatureSection extends StatefulWidget {
   State<TablatureSection> createState() => _TablatureSectionState();
 }
 class _TablatureSectionState extends State<TablatureSection> {
-  // SUPPRIME l'ancienne liste _songs qui était ici.
-  // Tu l'utiliseras désormais en tapant `widget.songs`
+
 
   @override
   Widget build(BuildContext context) {
-    // 🛠️ Le StreamBuilder écoute la collection 'songs' en temps réel
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('songs').snapshots(),
       builder: (context, snapshot) {
@@ -41,12 +39,12 @@ class _TablatureSectionState extends State<TablatureSection> {
 
         // 4. On transforme les documents Firebase en liste d'objets Song
         final List<Song> songs = snapshot.data!.docs.map((doc) {
-          return Song.fromMap(doc.data() as Map<String, dynamic>);
+          return Song.fromMap(doc.data() as Map<String, dynamic>, doc.id); 
         }).toList();
 
         // 5. On affiche la liste exactement comme avant !
         return ListView.separated(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 100),
           itemCount: songs.length,
           separatorBuilder: (context, index) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
@@ -57,11 +55,17 @@ class _TablatureSectionState extends State<TablatureSection> {
                 child: GestureDetector(
                   onTap: () => _openSongDetails(song),
                   child: Container(
-                    padding: const EdgeInsets.all(4.0), 
+                    padding: const EdgeInsets.all(8.0), // Un peu plus d'air à l'intérieur
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      borderRadius: BorderRadius.circular(16), // Plus arrondi
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05), // Ombre plus douce et moderne
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
                     ),
                     child: _buildCardView(song),
                   ),
@@ -71,6 +75,44 @@ class _TablatureSectionState extends State<TablatureSection> {
           },
         );
       },
+    );
+  }
+
+
+  // FONCTION POUR OUVRIR LA MODIFICATION
+  void _editSong(Song song) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CompositionSection(songToEdit: song)),
+    );
+  }
+
+  // FONCTION POUR SUPPRIMER AVEC CONFIRMATION
+  void _deleteSong(Song song) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Supprimer la tablature ?"),
+        content: Text("Veux-tu vraiment supprimer définitivement '${song.title}' de la base de données ?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), 
+            child: const Text("Annuler")
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx); // Ferme la popup
+              // Lance la suppression sur Firebase via l'ID de la chanson
+              await FirebaseFirestore.instance.collection('songs').doc(song.id).delete();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tablature supprimée !"), backgroundColor: Colors.grey));
+              }
+            },
+            child: const Text("Supprimer", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      )
     );
   }
 
@@ -108,7 +150,9 @@ class _TablatureSectionState extends State<TablatureSection> {
             ),
           ),
         ),
+
         const SizedBox(width: 4),
+
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(right: 4.0, top: 4.0, bottom: 4.0),
@@ -169,12 +213,38 @@ class _TablatureSectionState extends State<TablatureSection> {
             ),
           ),
         ),
+        // NOUVEAU : LA COLONNE DES BOUTONS D'ACTION
+        Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                decoration: BoxDecoration(color: Colors.blue[50], shape: BoxShape.circle),
+                child: IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                  onPressed: () => _editSong(song),
+                  tooltip: "Modifier",
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(color: Colors.red[50], shape: BoxShape.circle),
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                  onPressed: () => _deleteSong(song),
+                  tooltip: "Supprimer",
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
   // ---------------------------------------------------------
-  // 🛠️ OUVERTURE DE LA PAGE DE LECTURE
+  // OUVERTURE DE LA PAGE DE LECTURE
   // ---------------------------------------------------------
 
   void _openSongDetails(Song song) {
@@ -185,7 +255,6 @@ class _TablatureSectionState extends State<TablatureSection> {
       barrierColor: Colors.transparent, 
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, animation, secondaryAnimation) {
-        // 👈 On appelle un vrai widget StatefulWidget pour gérer le métronome !
         return SongDetailView(song: song);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -202,7 +271,7 @@ class _TablatureSectionState extends State<TablatureSection> {
 }
 
 // =========================================================================
-// 🎸 NOUVEAU WIDGET : LA PAGE DÉTAILLÉE DE LA CHANSON (AVEC MÉTRONOME)
+// NOUVEAU WIDGET : LA PAGE DÉTAILLÉE DE LA CHANSON (AVEC MÉTRONOME)
 // =========================================================================
 
 class SongDetailView extends StatefulWidget {
@@ -220,7 +289,6 @@ class _SongDetailViewState extends State<SongDetailView> {
 
   @override
   void dispose() {
-    // IL EST VITAL DE COUPER LE TIMER ET LE SON QUAND ON FERME LA PAGE
     _metronomeTimer?.cancel();
     _audioPlayer.dispose();
     super.dispose();
@@ -284,7 +352,7 @@ class _SongDetailViewState extends State<SongDetailView> {
             
             const SizedBox(height: 24),
             
-            // 🛠️ LE PANNEAU D'INFORMATION ET MÉTRONOME
+            // LE PANNEAU D'INFORMATION ET MÉTRONOME
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -349,7 +417,6 @@ class _SongDetailViewState extends State<SongDetailView> {
     );
   }
 
-  // J'ai ramené les méthodes de parsing ici pour qu'elles fonctionnent sur cette page
   Widget _buildLyricsLine(String rawLine) {
     final RegExp regExp = RegExp(r'\[(.*?)\]');
     final Iterable<RegExpMatch> matches = regExp.allMatches(rawLine);
@@ -409,7 +476,6 @@ class _SongDetailViewState extends State<SongDetailView> {
   }
 }
 
-// Note: J'ai laissé cette méthode en "globale" en bas car elle est utilisée à la fois par la carte et par la page détaillée
 Widget _buildRhythmArrows(String rhythm, {bool isMobile = false}) {
   List<Widget> arrows = [];
   final double iconSize = isMobile ? 14.0 : 18.0;
