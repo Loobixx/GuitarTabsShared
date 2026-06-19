@@ -119,10 +119,10 @@ class _TablatureSectionState extends State<TablatureSection> {
   Widget _buildCardView(Song song) {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
-    final imageSize = isMobile ? 50.0 : 120.0;
-    final titleFontSize = isMobile ? 10.5 : 18.0;
-    final artistFontSize = isMobile ? 9.0 : 14.0;
-    final chipFontSize = isMobile ? 8.5 : 13.0;
+    final imageSize = isMobile ? 75.0 : 120.0;
+    final titleFontSize = isMobile ? 15.0 : 18.0;
+    final artistFontSize = isMobile ? 13.0 : 14.0;
+    final chipFontSize = isMobile ? 11.0 : 13.0;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -184,7 +184,7 @@ class _TablatureSectionState extends State<TablatureSection> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.timer_outlined, size: isMobile ? 12 : 16, color: Colors.grey[600]),
+                        Icon(Icons.timer_outlined, size: isMobile ? 14 : 16, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
                           "${song.bpm} BPM",

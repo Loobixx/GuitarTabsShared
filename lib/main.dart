@@ -22,14 +22,12 @@ class TablAIApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        // 🛠️ COULEURS ULTRA MODERNES
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF5A5F), // Un rouge/corail très moderne
+          seedColor: const Color(0xFF0EA5E9), 
           brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA), // Fond très clair et doux
+        scaffoldBackgroundColor: const Color(0xFFF5F7FA), 
         
-        // 🛠️ DESIGN DES CHAMPS DE TEXTE ARRONDIS
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -40,7 +38,7 @@ class TablAIApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFFF5A5F), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 2), 
           ),
         ),
       ),
@@ -69,15 +67,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Scaffold(
       extendBody: true, // 🛠️ TRÈS IMPORTANT : Permet au fond coloré de glisser SOUS la barre de navigation
       
-      // 🛠️ LE NOUVEAU FOND MODERNE (Dégradé très doux Indigo -> Rose/Corail)
+      // 🛠️ LE NOUVEAU FOND MODERNE (Dégradé très doux Bleu Ciel -> Bleu Lavande)
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFE0E7FF), // Un bleu indigo très clair
-              Color(0xFFFFE4E6), // Un rose/corail très clair
+              Color(0xFFF0F9FF), // Un bleu ciel extrêmement clair (quasi blanc)
+              Color(0xFFE0E7FF), // Un bleu lavande très doux
             ],
           ),
         ),
@@ -130,7 +128,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       // --- LA BARRE DE NAVIGATION EN FORME DE PILULE ---
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 16, left: 24, right: 24), // Un peu moins d'espace en bas
+          padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16), 
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -166,7 +164,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   // LE BOUTON DE NAVIGATION ANIMÉ
-  Widget _buildNavItem(IconData icon, String label, int index) {
+Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = _currentIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
@@ -174,7 +172,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
         decoration: BoxDecoration(
           color: isSelected ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
