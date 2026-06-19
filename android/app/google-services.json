@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "181478177080",
+    "project_id": "sharedtabs-e11d5",
+    "storage_bucket": "sharedtabs-e11d5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181478177080:android:66b63821d6349cdd07e9cd",
+        "android_client_info": {
+          "package_name": "com.example.guitar_shared_tabs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAc4JXqHtaGKQVxhicyxc755jf9RsCWvW4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
