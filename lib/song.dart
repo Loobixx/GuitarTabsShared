@@ -66,3 +66,10 @@ class Song {
     return uniqueChords.toList();
   }
 }
+
+class Chord {
+  final String name;
+  final List<int> frets; // Ex: [-1, 3, 2, 0, 1, 0] (-1 = corde muette)
+
+  Chord({required this.name, required this.frets});
+}
