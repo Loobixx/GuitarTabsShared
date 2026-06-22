@@ -483,8 +483,11 @@ class _SongDetailViewState extends State<SongDetailView> {
                                           context: context,
                                           builder: (ctx) => ChordVisualizer(
                                             name: chord, 
-                                            frets: List<int>.from(data['frets'] ?? [0, 0, 0, 0, 0, 0]), // Récupère la liste
-                                            startingFret: data['startingFret'] ?? 1, // 🛠️ NOUVEAU : Récupère le décalage !
+                                            frets: List<int>.from(data['frets'] ?? [0, 0, 0, 0, 0, 0]),
+                                            startingFret: data['startingFret'] ?? 1,
+                                            barreFret: data['barreFret'] ?? 0,
+                                            barreStartString: data['barreStartString'] ?? 0,
+                                            barreEndString: data['barreEndString'] ?? 5,
                                           ),
                                         );
                                       }
@@ -617,7 +620,10 @@ class _SongDetailViewState extends State<SongDetailView> {
                         builder: (ctx) => ChordVisualizer(
                           name: chord, 
                           frets: List<int>.from(data['frets'] ?? [0, 0, 0, 0, 0, 0]),
-                          startingFret: data['startingFret'] ?? 1, // 🛠️ NOUVEAU
+                          startingFret: data['startingFret'] ?? 1,
+                          barreFret: data['barreFret'] ?? 0,
+                          barreStartString: data['barreStartString'] ?? 0,
+                          barreEndString: data['barreEndString'] ?? 5,
                         ),
                       );
                     }
@@ -657,4 +663,5 @@ Widget _buildRhythmArrows(String rhythm, {bool isMobile = false}) {
     crossAxisAlignment: WrapCrossAlignment.center, 
     children: arrows
   );
+  
 }
