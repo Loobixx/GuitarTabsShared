@@ -15,22 +15,31 @@ class ChordCreator extends StatefulWidget {
 class _ChordCreatorState extends State<ChordCreator> {
   final _nameController = TextEditingController();
   List<int> _frets = [0, 0, 0, 0, 0, 0];
+  int _startingFret = 1; // 🛠️ NOUVEAU : La variable d'état du décalage
 
   @override
   void initState() {
     super.initState();
     if (widget.chordToEdit != null) {
-      _nameController.text = widget.chordToEdit!['name'];
-      _frets = List<int>.from(widget.chordToEdit!['frets']);
+      final data = widget.chordToEdit!.data() as Map<String, dynamic>;
+      _nameController.text = data['name'] ?? '';
+      _frets = List<int>.from(data['frets'] ?? [0, 0, 0, 0, 0, 0]);
+      // On récupère le startingFret s'il existe, sinon on met 1 par défaut
+      _startingFret = data['startingFret'] ?? 1; 
     } else if (widget.initialName != null) {
       _nameController.text = widget.initialName!;
     }
   }
 
   Future<void> _saveChord() async {
-    if (_nameController.text.isEmpty) return; // Sécurité
+    if (_nameController.text.isEmpty) return; 
 
-    final data = {'name': _nameController.text, 'frets': _frets};
+    // 🛠️ NOUVEAU : On sauvegarde _startingFret dans Firebase
+    final data = {
+      'name': _nameController.text, 
+      'frets': _frets,
+      'startingFret': _startingFret, 
+    };
     
     try {
       if (widget.chordToEdit == null) {
@@ -47,12 +56,25 @@ class _ChordCreatorState extends State<ChordCreator> {
     }
   }
 
+  // Fonctions pour décaler le manche
+  void _increaseStartingFret() {
+    if (_startingFret < 12) { // On bloque à la 12ème case par logique
+      setState(() => _startingFret++);
+    }
+  }
+
+  void _decreaseStartingFret() {
+    if (_startingFret > 1) {
+      setState(() => _startingFret--);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.chordToEdit != null;
 
     return Scaffold(
-      extendBodyBehindAppBar: true, // 🛠️ Permet au dégradé de passer sous la barre du haut
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -69,7 +91,7 @@ class _ChordCreatorState extends State<ChordCreator> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFF0F9FF), Color(0xFFE0E7FF)], // Ton beau dégradé !
+            colors: [Color(0xFFF0F9FF), Color(0xFFE0E7FF)],
           ),
         ),
         child: SafeArea(
@@ -82,7 +104,6 @@ class _ChordCreatorState extends State<ChordCreator> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // --- TITRE MIGNON ---
                     Text(
                       isEditing ? "Modifier l'accord 🎸" : "Nouvel accord ✨",
                       style: const TextStyle(
@@ -94,25 +115,48 @@ class _ChordCreatorState extends State<ChordCreator> {
                     ),
                     const SizedBox(height: 40),
                     
-                    // --- CHAMP DE TEXTE ---
                     TextFormField(
                       controller: _nameController, 
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                       decoration: InputDecoration(
-                        labelText: "Nom de l'accord (ex: Am, G...)",
+                        labelText: "Nom de l'accord (ex: Bm, F#...)",
                         prefixIcon: const Icon(Icons.music_note, color: Color(0xFF0EA5E9)),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                       )
                     ),
-                    const SizedBox(height: 40), 
+                    const SizedBox(height: 30), 
+
+                    // 🛠️ NOUVEAU : Les boutons de décalage du manche
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: _decreaseStartingFret,
+                          icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF1E293B), size: 30),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                          child: Text(
+                            "Frette $_startingFret",
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0EA5E9)),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _increaseStartingFret,
+                          icon: const Icon(Icons.add_circle_outline, color: Color(0xFF1E293B), size: 30),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     
                     // --- LE MANCHE DE GUITARE ---
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6), // Effet verre un peu transparent
+                        color: Colors.white.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))
@@ -120,7 +164,6 @@ class _ChordCreatorState extends State<ChordCreator> {
                       ),
                       child: Column(
                         children: [
-                          // Les numéros des cordes
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(6, (index) => 
@@ -135,9 +178,11 @@ class _ChordCreatorState extends State<ChordCreator> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          // Ta grille cliquable
+                          
+                          // 🛠️ On passe la valeur ici !
                           ChordGridSelector(
                             frets: _frets,
+                            startingFret: _startingFret, 
                             onSelect: (string, fret) {
                               setState(() {
                                 _frets[string] = (_frets[string] == fret) ? 0 : fret;
@@ -150,9 +195,8 @@ class _ChordCreatorState extends State<ChordCreator> {
                     
                     const SizedBox(height: 40), 
                     
-                    // --- BOUTON SAUVEGARDER ---
                     SizedBox(
-                      width: double.infinity, // Bouton large
+                      width: double.infinity,
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.check_circle_outline, size: 22, color: Colors.white,),
                         label: Text(

@@ -24,7 +24,6 @@ class _CompositionSectionState extends State<CompositionSection> {
   final _capoController = TextEditingController();
 
   String? _selectedChord; 
-  List<String> availableChords = ["C", "G", "Em", "D", "Am", "F", "Bm"];
 
   @override
   void initState() {
@@ -153,20 +152,44 @@ class _CompositionSectionState extends State<CompositionSection> {
                     child: Wrap(
                       spacing: 12, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, 
                       children: [
-                        DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedChord,
-                            hint: const Text("Choisir un accord"),
-                            items: availableChords.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontWeight: FontWeight.bold)))).toList(),
-                            onChanged: (val) => setState(() => _selectedChord = val),
-                          ),
+                        
+                        // 🛠️ NOUVEAU : Le StreamBuilder pour récupérer les accords dynamiquement
+                        StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance.collection('chords').snapshots(),
+                          builder: (context, snapshot) {
+                            List<String> dynamicChords = [];
+                            
+                            if (snapshot.hasData) {
+                              // 1. On récupère tous les noms d'accords
+                              dynamicChords = snapshot.data!.docs.map((doc) => doc['name'].toString()).toList();
+                              // 2. On enlève les doublons éventuels
+                              dynamicChords = dynamicChords.toSet().toList();
+                              // 3. On trie par ordre alphabétique
+                              dynamicChords.sort();
+                            }
+
+                            // Sécurité : si l'accord sélectionné a été supprimé de la base, on le remet à null
+                            String? validSelectedChord = dynamicChords.contains(_selectedChord) ? _selectedChord : null;
+
+                            return DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: validSelectedChord,
+                                hint: const Text("Choisir un accord"),
+                                items: dynamicChords.map((c) => 
+                                  DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontWeight: FontWeight.bold)))
+                                ).toList(),
+                                onChanged: (val) => setState(() => _selectedChord = val),
+                              ),
+                            );
+                          }
                         ),
+
                         ElevatedButton.icon(
                           icon: const Icon(Icons.add_circle_outline, size: 18),
                           label: const Text("Insérer au curseur"),
                           style: ElevatedButton.styleFrom(
-                            foregroundColor: const Color(0xFF0EA5E9), // Texte Bleu ciel
-                            backgroundColor: const Color(0xFFE0F2FE), // Fond Bleu très clair
+                            foregroundColor: const Color(0xFF0EA5E9), 
+                            backgroundColor: const Color(0xFFE0F2FE), 
                             elevation: 0
                           ),
                           onPressed: _insertChordInLyrics,
