@@ -327,18 +327,17 @@ class _SongDetailViewState extends State<SongDetailView> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   
   // 1. Remplace ta fonction actuelle par celle-ci
-  Future<List<int>> _getFretsForChord(String chordName) async {
-    // On va chercher dans la collection 'chords' le document qui a le nom de l'accord
+  // 🛠️ 1. NOUVELLE FONCTION QUI RÉCUPÈRE TOUT L'ACCORD
+  Future<Map<String, dynamic>?> _getChordData(String chordName) async {
     final query = await FirebaseFirestore.instance
         .collection('chords')
         .where('name', isEqualTo: chordName)
         .get();
 
-    // Si on trouve le document, on récupère la liste des frettes, sinon on met une valeur par défaut
     if (query.docs.isNotEmpty) {
-      return List<int>.from(query.docs.first['frets']);
+      return query.docs.first.data() as Map<String, dynamic>;
     }
-    return [0, 0, 0, 0, 0, 0]; 
+    return null; 
   }
 
   @override
@@ -474,17 +473,18 @@ class _SongDetailViewState extends State<SongDetailView> {
                                   runSpacing: 6,
                                   children: widget.song.chords.map((chord) => GestureDetector(
                                     // 🛠️ ON REND L'ACCORD CLIQUABLE
-                                    onTap: () async { // 1. Ajoute 'async' ici
-                                      // 2. Récupère les frettes depuis Firebase
-                                      final frets = await _getFretsForChord(chord); 
+                                    onTap: () async { 
+                                      // 1. Récupère les données depuis Firebase
+                                      final data = await _getChordData(chord); 
                                       
-                                      // 3. Affiche la popup seulement si le composant est toujours monté
-                                      if (mounted) {
+                                      // 2. Affiche la popup si on a trouvé les données
+                                      if (mounted && data != null) {
                                         showModalBottomSheet(
                                           context: context,
                                           builder: (ctx) => ChordVisualizer(
                                             name: chord, 
-                                            frets: frets // 4. Utilise la variable 'frets' récupérée
+                                            frets: List<int>.from(data['frets'] ?? [0, 0, 0, 0, 0, 0]), // Récupère la liste
+                                            startingFret: data['startingFret'] ?? 1, // 🛠️ NOUVEAU : Récupère le décalage !
                                           ),
                                         );
                                       }
@@ -606,17 +606,18 @@ class _SongDetailViewState extends State<SongDetailView> {
           children: [
             GestureDetector(
               onTap: (i == 0 && chord != null) 
-                ? () async { // 1. Ajoute 'async' ici
-                    // 2. Attend le résultat de Firebase
-                    final frets = await _getFretsForChord(chord!); 
+                ? () async { 
+                    // 1. Attend le résultat de Firebase
+                    final data = await _getChordData(chord!); 
                     
-                    // 3. Ouvre la popup en vérifiant que la page est toujours là
-                    if (mounted) {
+                    // 2. Ouvre la popup en envoyant les frettes ET le startingFret
+                    if (mounted && data != null) {
                       showModalBottomSheet(
                         context: context,
                         builder: (ctx) => ChordVisualizer(
                           name: chord, 
-                          frets: frets // 4. Utilise la liste qu'on vient de récupérer
+                          frets: List<int>.from(data['frets'] ?? [0, 0, 0, 0, 0, 0]),
+                          startingFret: data['startingFret'] ?? 1, // 🛠️ NOUVEAU
                         ),
                       );
                     }

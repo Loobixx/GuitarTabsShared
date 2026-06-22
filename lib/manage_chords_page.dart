@@ -133,7 +133,7 @@ class ManageChordsPage extends StatelessWidget {
                                     if (isComplete) // On ne peut supprimer que s'il existe en base
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: Color(0xFFFF5A5F)), 
-                                        onPressed: () => _confirmDelete(context, chordDoc!)
+                                        onPressed: () => _confirmDelete(context, chordDoc)
                                       ),
                                   ],
                                 ),

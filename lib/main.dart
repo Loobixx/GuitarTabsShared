@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:guitar_shared_tabs/chord_creator.dart';
 import 'package:guitar_shared_tabs/manage_chords_page.dart';
 import 'firebase_options.dart';
 import 'package:guitar_shared_tabs/composition_section.dart';
